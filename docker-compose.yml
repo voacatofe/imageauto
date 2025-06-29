@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    # Para EasyPanel: exposer apenas a porta do serviço (não host ports)
+    ports:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      # BASE_URL será configurado via EasyPanel environment variables
+      - REDIS_URL=redis://redis:6379
+      - CACHE_ENABLED=true
+      - CACHE_TTL=3600
+      - MAX_FILE_SIZE=10485760
+      - RATE_LIMIT_MAX=100
+      - LOG_LEVEL=info
+    volumes:
+      # Volumes persistentes para EasyPanel
+      - generated-images:/app/public/generated
+      - fonts-data:/app/public/fonts
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - imageauto-network
+
+  redis:
+    # Usar versão específica para EasyPanel (não :latest)
+    image: redis:7.2-alpine
+    # Para EasyPanel: apenas porta de serviço
+    ports:
+      - "6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - imageauto-network
+
+volumes:
+  redis-data:
+    driver: local
+  generated-images:
+    driver: local
+  fonts-data:
+    driver: local
+
+networks:
+  imageauto-network:
+    driver: bridge 

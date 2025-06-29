@@ -1,0 +1,31 @@
+version: '3.8'
+
+# Docker Compose para desenvolvimento local
+# Uso: docker-compose -f docker-compose.dev.yml up -d
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - HOST=0.0.0.0
+      - BASE_URL=http://localhost:3000
+      - API_PREFIX=/api/v1
+      - CACHE_ENABLED=false
+      - LOG_LEVEL=debug
+    volumes:
+      # Para desenvolvimento: bind mounts para hot reload
+      - ./src:/app/src
+      - ./public/generated:/app/public/generated
+      - ./public/fonts:/app/public/fonts
+      - ./.env:/app/.env
+    restart: unless-stopped
+    networks:
+      - dev-network
+
+networks:
+  dev-network:
+    driver: bridge 

@@ -1,0 +1,136 @@
+{
+  "name": "ImageAuto - Geração de Imagens",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.IMAGEAUTO_URL}}/api/v1/generate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{$env.IMAGEAUTO_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "template",
+              "value": "instagram-feed-basico"
+            },
+            {
+              "name": "variables",
+              "value": "={\n  \"titulo\": \"{{$json.titulo}}\",\n  \"subtitulo\": \"{{$json.subtitulo}}\",\n  \"corPrimaria\": \"{{$json.corPrimaria || '#E4405F'}}\",\n  \"corSecundaria\": \"{{$json.corSecundaria || '#FFFFFF'}}\"\n}"
+            },
+            {
+              "name": "format",
+              "value": "png"
+            },
+            {
+              "name": "quality",
+              "value": "90"
+            },
+            {
+              "name": "returnBase64",
+              "value": "={{$json.returnBase64 || false}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Gerar Imagem Instagram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Exemplo de dados para gerar múltiplas imagens\nreturn [\n  {\n    titulo: \"Promoção de Verão\",\n    subtitulo: \"Até 50% OFF em toda a loja\",\n    corPrimaria: \"#FF6B6B\",\n    corSecundaria: \"#4ECDC4\"\n  },\n  {\n    titulo: \"Black Friday\",\n    subtitulo: \"Descontos imperdíveis\",\n    corPrimaria: \"#000000\",\n    corSecundaria: \"#FFD700\"\n  },\n  {\n    titulo: \"Natal 2024\",\n    subtitulo: \"Presentes especiais\",\n    corPrimaria: \"#C41E3A\",\n    corSecundaria: \"#165B33\"\n  }\n];"
+      },
+      "id": "3",
+      "name": "Preparar Dados",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 100]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "4",
+      "name": "SplitInBatches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [650, 100]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Preparar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Dados": {
+      "main": [
+        [
+          {
+            "node": "SplitInBatches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SplitInBatches": {
+      "main": [
+        [
+          {
+            "node": "Gerar Imagem Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Imagem Instagram": {
+      "main": [
+        [
+          {
+            "node": "SplitInBatches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "imageauto-example"
+  },
+  "tags": []
+} 
