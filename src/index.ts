@@ -5,21 +5,12 @@ import staticPlugin from '@fastify/static';
 import { config } from './config/index.js';
 import { generateRoutes } from './routes/generate.routes.js';
 import { join } from 'path';
-import pino from 'pino';
 
-// Criar instância do Fastify com logger
+// Configuração do logger
 const fastify = Fastify({
-  logger: pino({
-    level: config.logging.level,
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        translateTime: 'HH:MM:ss Z',
-        ignore: 'pid,hostname',
-      },
-    },
-  }),
+  logger: config.env === 'production' 
+    ? { level: config.logging.level }
+    : true,
 });
 
 // Função principal de inicialização
