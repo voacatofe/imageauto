@@ -15,7 +15,38 @@ export const generateRoutes: FastifyPluginAsync = async (fastify) => {
   await renderService.loadFonts();
   
   // Rota para listar templates disponíveis
-  fastify.get('/templates', async (_request, reply) => {
+  fastify.get('/templates', {
+    schema: {
+      description: 'Lista todos os templates disponíveis',
+      tags: ['Templates'],
+      response: {
+        200: {
+          description: 'Lista de templates',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  nome: { type: 'string' },
+                  descricao: { type: 'string' },
+                  tipo: { type: 'string' },
+                  largura: { type: 'number' },
+                  altura: { type: 'number' },
+                  redeSocial: { type: 'string' },
+                  variaveisObrigatorias: { type: 'array', items: { type: 'string' } },
+                  variaveisOpcionais: { type: 'array', items: { type: 'string' } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (_request, reply) => {
     const templates = templateService.getTemplates();
     return reply.send({
       success: true,
@@ -26,7 +57,78 @@ export const generateRoutes: FastifyPluginAsync = async (fastify) => {
   // Rota para gerar imagem única
   fastify.post<{
     Body: GenerateImageRequest;
-  }>('/generate', async (request, reply) => {
+  }>('/generate', {
+    schema: {
+      description: 'Gera uma imagem baseada em um template e variáveis',
+      tags: ['Geração'],
+      body: {
+        type: 'object',
+        required: ['template', 'variables'],
+        properties: {
+          template: { 
+            type: 'string', 
+            description: 'ID do template a ser usado',
+            examples: ['instagram-feed-basico', 'instagram-feed-quadrado']
+          },
+          variables: { 
+            type: 'object', 
+            description: 'Variáveis para substituir no template',
+            examples: [{ titulo: 'Meu Post', subtitulo: 'Descrição do post' }]
+          },
+          format: { 
+            type: 'string', 
+            enum: ['png', 'jpeg', 'webp'], 
+            default: 'png',
+            description: 'Formato da imagem de saída'
+          },
+          quality: { 
+            type: 'number', 
+            minimum: 1, 
+            maximum: 100, 
+            default: 90,
+            description: 'Qualidade da imagem (1-100)'
+          },
+          returnBase64: { 
+            type: 'boolean', 
+            default: false,
+            description: 'Se deve retornar a imagem em base64'
+          },
+          webhook: { 
+            type: 'string', 
+            format: 'uri',
+            description: 'URL do webhook para notificação (opcional)'
+          }
+        }
+      },
+      response: {
+        200: {
+          description: 'Imagem gerada com sucesso',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            imageUrl: { type: 'string' },
+            imageBase64: { type: 'string' }
+          }
+        },
+        404: {
+          description: 'Template não encontrado',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' }
+          }
+        },
+        500: {
+          description: 'Erro interno do servidor',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     try {
       const { template: templateId, variables, format = 'png', quality = 90 } = request.body;
       
@@ -100,7 +202,37 @@ export const generateRoutes: FastifyPluginAsync = async (fastify) => {
   });
   
   // Rota para geração em lote
-  fastify.post('/generate/batch', async (_request, reply) => {
+  fastify.post('/generate/batch', {
+    schema: {
+      description: 'Gera múltiplas imagens em lote (em desenvolvimento)',
+      tags: ['Geração'],
+      body: {
+        type: 'object',
+        properties: {
+          requests: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                template: { type: 'string' },
+                variables: { type: 'object' }
+              }
+            }
+          }
+        }
+      },
+      response: {
+        501: {
+          description: 'Funcionalidade não implementada',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (_request, reply) => {
     // TODO: Implementar geração em lote com filas
     return reply.status(501).send({
       success: false,
@@ -114,7 +246,41 @@ export const generateRoutes: FastifyPluginAsync = async (fastify) => {
       template: string;
       variables: Record<string, any>;
     };
-  }>('/validate', async (request, reply) => {
+  }>('/validate', {
+    schema: {
+      description: 'Valida se as variáveis fornecidas são compatíveis com o template',
+      tags: ['Validação'],
+      body: {
+        type: 'object',
+        required: ['template', 'variables'],
+        properties: {
+          template: { 
+            type: 'string', 
+            description: 'ID do template a ser validado',
+            examples: ['instagram-feed-basico']
+          },
+          variables: { 
+            type: 'object', 
+            description: 'Variáveis para validar'
+          }
+        }
+      },
+      response: {
+        200: {
+          description: 'Resultado da validação',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            errors: { 
+              type: 'array', 
+              items: { type: 'string' },
+              description: 'Lista de erros de validação (se houver)'
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const { template, variables } = request.body;
     
     const validation = templateService.validateVariables(template, variables);
@@ -126,7 +292,30 @@ export const generateRoutes: FastifyPluginAsync = async (fastify) => {
   });
   
   // Health check
-  fastify.get('/health', async (_request, reply) => {
+  fastify.get('/health', {
+    schema: {
+      description: 'Verifica o status de saúde da API',
+      tags: ['Sistema'],
+      response: {
+        200: {
+          description: 'Status da API',
+          type: 'object',
+          properties: {
+            status: { 
+              type: 'string', 
+              enum: ['ok'],
+              description: 'Status atual da API'
+            },
+            timestamp: { 
+              type: 'string', 
+              format: 'date-time',
+              description: 'Timestamp da verificação'
+            }
+          }
+        }
+      }
+    }
+  }, async (_request, reply) => {
     return reply.send({
       status: 'ok',
       timestamp: new Date().toISOString(),

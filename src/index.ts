@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import staticPlugin from '@fastify/static';
+import swagger from '@fastify/swagger';
+import swaggerUI from '@fastify/swagger-ui';
 import { config } from './config/index.js';
 import { generateRoutes } from './routes/generate.routes.js';
 import { join } from 'path';
@@ -16,6 +18,59 @@ const fastify = Fastify({
 // Função principal de inicialização
 async function start() {
   try {
+    // Registrar Swagger (deve ser primeiro)
+    await fastify.register(swagger, {
+      openapi: {
+        openapi: '3.0.0',
+        info: {
+          title: 'ImageAuto API',
+          description: 'Sistema de geração automatizada de templates para mídias sociais com integração N8N',
+          version: '1.0.0',
+          contact: {
+            name: 'ImageAuto Support',
+            url: 'https://github.com/voacatofe/imageauto',
+          },
+        },
+        servers: [
+          {
+            url: config.baseUrl,
+            description: 'Servidor de desenvolvimento',
+          },
+        ],
+        components: {
+          securitySchemes: {
+            apiKey: {
+              type: 'apiKey',
+              name: 'x-api-key',
+              in: 'header',
+            },
+          },
+        },
+        tags: [
+          { name: 'Templates', description: 'Gerenciamento de templates' },
+          { name: 'Geração', description: 'Geração de imagens' },
+          { name: 'Validação', description: 'Validação de templates e variáveis' },
+          { name: 'Sistema', description: 'Health checks e informações do sistema' },
+        ],
+      },
+    });
+
+    await fastify.register(swaggerUI, {
+      routePrefix: '/api/v1/docs',
+      uiConfig: {
+        docExpansion: 'full',
+        deepLinking: false,
+      },
+      uiHooks: {
+        onRequest: function (request, reply, next) { next() },
+        preHandler: function (request, reply, next) { next() }
+      },
+      staticCSP: true,
+      transformStaticCSP: (header) => header,
+      transformSpecification: (swaggerObject, request, reply) => { return swaggerObject },
+      transformSpecificationClone: true
+    });
+    
     // Registrar plugins
     await fastify.register(cors, {
       origin: true, // Permite qualquer origem (ajuste conforme necessário)
